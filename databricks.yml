@@ -1,0 +1,59 @@
+bundle:
+  name: earthquake-streaming-pipeline
+
+workspace:
+  host: https://dbc-4755d9a9-d11b.cloud.databricks.com
+  root_path: ~/.bundle/${bundle.name}/${bundle.target}
+
+targets:
+  dev:
+    mode: development
+    default: true
+
+  prod:
+    mode: production
+    workspace:
+      root_path: /Shared/earthquake-streaming-pipeline
+
+resources:
+  jobs:
+    earthquake_streaming_ingest:
+      name: "[earthquake-streaming] Ingestão Contínua (1h)"
+      schedule:
+        quartz_cron_expression: "0 0 * * * ?"
+        timezone_id: "America/Sao_Paulo"
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: api_ingestion
+          notebook_task:
+            notebook_path: ${workspace.file_path}/01_api_ingestion
+            source: WORKSPACE
+
+        - task_key: bronze_stream
+          depends_on:
+            - task_key: api_ingestion
+          notebook_task:
+            notebook_path: ${workspace.file_path}/02_bronze_stream
+            source: WORKSPACE
+
+        - task_key: silver_stream
+          depends_on:
+            - task_key: bronze_stream
+          notebook_task:
+            notebook_path: ${workspace.file_path}/03_silver_stream
+            source: WORKSPACE
+
+        - task_key: gold_alerts
+          depends_on:
+            - task_key: silver_stream
+          notebook_task:
+            notebook_path: ${workspace.file_path}/04_gold_alerts
+            source: WORKSPACE
+
+        - task_key: quality_checks
+          depends_on:
+            - task_key: gold_alerts
+          notebook_task:
+            notebook_path: ${workspace.file_path}/05_quality_checks
+            source: WORKSPACE

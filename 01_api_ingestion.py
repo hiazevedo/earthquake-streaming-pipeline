@@ -3,7 +3,7 @@
 import requests
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # COMMAND ----------
 
@@ -29,7 +29,7 @@ def fetch_earthquakes(
         hours_back    : quantas horas para trás buscar
         limit         : máximo de eventos por chamada
     """
-    end_time   = datetime.utcnow()
+    end_time   = datetime.now(timezone.utc)
     start_time = end_time - timedelta(hours=hours_back)
 
     params = {
@@ -62,7 +62,7 @@ metadata      = data["metadata"]
 print(f"\n📊 Resposta da API:")
 print(f"   Status    : {metadata.get('status', 'N/A')}")
 print(f"   Total     : {metadata.get('count', 0)} eventos")
-print(f"   Gerado em : {datetime.utcfromtimestamp(metadata['generated']/1000)}")
+print(f"   Gerado em : {datetime.fromtimestamp(metadata['generated']/1000, tz=timezone.utc)}")
 
 print(f"\n🔍 Exemplo do primeiro evento:")
 if total_eventos > 0:
@@ -75,7 +75,7 @@ if total_eventos > 0:
     print(f"   Profund.   : {coords[2]} km")
     print(f"   Tsunami    : {'⚠️ SIM' if props['tsunami'] else 'Não'}")
     print(f"   Alerta     : {props.get('alert', 'N/A')}")
-    print(f"   Timestamp  : {datetime.utcfromtimestamp(props['time']/1000)}")
+    print(f"   Timestamp  : {datetime.fromtimestamp(props['time']/1000, tz=timezone.utc)}")
 
 # COMMAND ----------
 
@@ -85,13 +85,13 @@ def save_batch_to_volume(data: dict, path: str) -> str:
     Salva um batch de eventos como arquivo JSON no Volume.
     Nome do arquivo inclui timestamp para garantir unicidade.
     """
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename  = f"earthquakes_{timestamp}.json"
     filepath  = f"{path}/{filename}"
 
     # Extrair apenas os features (eventos) e adicionar metadados de coleta
     batch = {
-        "collected_at" : datetime.utcnow().isoformat(),
+        "collected_at" : datetime.now(timezone.utc).isoformat(),
         "total_events" : len(data["features"]),
         "source"       : "USGS Earthquake Hazards Program",
         "features"     : data["features"]
