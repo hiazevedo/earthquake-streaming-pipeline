@@ -1,15 +1,16 @@
-# earthquake-streaming-pipeline
+# Earthquake Streaming Pipeline
 
 > Pipeline de streaming de dados sísmicos em tempo real com Auto Loader e Structured Streaming no Databricks
 
 ![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=for-the-badge&logo=databricks&logoColor=white)
 ![Apache Spark](https://img.shields.io/badge/Apache_Spark-E25A1C?style=for-the-badge&logo=apachespark&logoColor=white)
 ![Delta Lake](https://img.shields.io/badge/Delta_Lake-003366?style=for-the-badge&logo=delta&logoColor=white)
+![Unity Catalog](https://img.shields.io/badge/Unity_Catalog-0194E2?style=for-the-badge&logo=databricks&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 
 ---
 
-## Sobre o projeto
+## 📌 Sobre o projeto
 
 Pipeline de streaming que coleta dados sísmicos em tempo real da API do **USGS Earthquake Hazards Program**, processa via **Auto Loader + Structured Streaming** e gera alertas de risco com score calculado em tempo quase-real. Os dados fluem automaticamente do Volume de arquivos JSON até tabelas Delta analíticas com deduplicação e enriquecimento geográfico.
 
@@ -79,14 +80,32 @@ risk_score <  30  →  🟢 LOW
 
 ```
 earthquake-streaming-pipeline/
-├── 00_setup.py              # Catalog, schemas, volumes, checkpoints
-├── 01_api_ingestion.py      # Coleta da API USGS → Volume JSON
-├── 02_bronze_stream.py      # Auto Loader → Delta Bronze
-├── 03_silver_stream.py      # Streaming Bronze → Silver + enriquecimento
-├── 04_gold_alerts.py        # Risk Score + 4 tabelas Gold
-├── 05_quality_checks.py     # 29 checks automatizados ✅ 100%
-├── 06_visualizacoes.py      # 6 gráficos com Matplotlib/Seaborn
-└── 07_streaming_continuous.py  # Loop de micro-batches (5 min/ciclo)
+├── databricks.yml               # Databricks Asset Bundle — Job de ingestão (1h)
+├── 00_setup.py                  # Catalog, schemas, volumes, checkpoints
+├── 01_api_ingestion.py          # Coleta da API USGS → Volume JSON
+├── 02_bronze_stream.py          # Auto Loader → Delta Bronze
+├── 03_silver_stream.py          # Streaming Bronze → Silver + enriquecimento
+├── 04_gold_alerts.py            # Risk Score + 4 tabelas Gold
+├── 05_quality_checks.py         # 29 checks automatizados ✅ 100%
+├── 06_dashboard.py              # Notebook de dashboard Databricks SQL
+└── 07_streaming_continuous.py   # Loop de micro-batches (5 min/ciclo)
+```
+
+---
+
+## Databricks Job
+
+O pipeline está configurado como **Databricks Job** via Asset Bundle (`databricks.yml`), agendado para rodar a cada hora:
+
+```
+api_ingestion → bronze_stream → silver_stream → gold_alerts → quality_checks
+```
+
+Para fazer o deploy:
+
+```bash
+databricks bundle deploy
+databricks bundle run earthquake_pipeline
 ```
 
 ---
@@ -157,6 +176,7 @@ MAX_CICLOS    = 12    # roda por 1 hora (12 × 5min)
 | **Auto Loader** | Ingestão incremental de JSONs (cloudFiles) |
 | **Structured Streaming** | Processamento contínuo com watermark |
 | **Delta Lake** | ACID transactions + time travel |
+| **Databricks Asset Bundles** | Orquestração do pipeline como código |
 | **USGS Earthquake API** | Fonte de dados pública (sem autenticação) |
 | **Matplotlib / Seaborn** | 6 gráficos analíticos tema dark |
 
@@ -167,18 +187,32 @@ MAX_CICLOS    = 12    # roda por 1 hora (12 × 5min)
 ### Pré-requisitos
 - Conta no [Databricks Free Edition](https://www.databricks.com/try-databricks)
 - Acesso à internet para a API USGS (gratuita, sem autenticação)
+- Databricks CLI instalado e configurado
 
 ### Passo a passo
 
 ```bash
-# Execute os notebooks na ordem:
-00_setup.py              # Cria catalog earthquake_pipeline
-01_api_ingestion.py      # Coleta 5 batches iniciais da API USGS
-02_bronze_stream.py      # Processa JSONs com Auto Loader
-03_silver_stream.py      # Enriquece e deduplica
-04_gold_alerts.py        # Gera risk scores e alertas
-05_quality_checks.py     # Valida pipeline (29/29)
-06_visualizacoes.py      # Gera 6 gráficos
+# 1. Clone o repositório
+git clone https://github.com/hiazevedo/earthquake-streaming-pipeline.git
+cd earthquake-streaming-pipeline
+
+# 2. Deploy via Asset Bundle
+databricks bundle deploy
+
+# 3. Execute o job
+databricks bundle run earthquake_pipeline
+```
+
+Ou execute os notebooks manualmente na ordem:
+
+```
+00_setup.py                 # Cria catalog earthquake_pipeline
+01_api_ingestion.py         # Coleta batches iniciais da API USGS
+02_bronze_stream.py         # Processa JSONs com Auto Loader
+03_silver_stream.py         # Enriquece e deduplica
+04_gold_alerts.py           # Gera risk scores e alertas
+05_quality_checks.py        # Valida pipeline (29/29)
+06_dashboard.py             # Dashboard Databricks SQL
 07_streaming_continuous.py  # Inicia loop contínuo (opcional)
 ```
 
@@ -205,3 +239,15 @@ A inferência automática de schema em dados GeoJSON aninhados é instável e po
 A API USGS pode ter pequenos atrasos no reporte de eventos. O watermark de 24h garante que eventos tardios ainda sejam capturados antes de serem descartados pela deduplicação.
 
 ---
+
+## Portfólio
+
+Este projeto faz parte do [Databricks Data Engineering Portfolio](https://github.com/hiazevedo/databricks-portfolio), uma série de projetos práticos cobrindo o ciclo completo de engenharia de dados com Databricks.
+
+| # | Projeto | Tema |
+|---|---------|------|
+| 1 | [fuel-price-pipeline-br](https://github.com/hiazevedo/fuel-price-pipeline-br) | Batch · Medallion · ANP |
+| 2 | **earthquake-streaming-pipeline** ← você está aqui | Streaming · Auto Loader · USGS |
+| 3 | [earthquake-ml-pipeline](https://github.com/hiazevedo/earthquake-ml-pipeline) | ML · MLflow · Spark ML |
+| 4 | [weather-dlt-pipeline](https://github.com/hiazevedo/weather-dlt-pipeline) | DLT · Workflows · Open-Meteo |
+| 5 | [weather-ml-rain-forecast](https://github.com/hiazevedo/weather-ml-rain-forecast) | ML Avançado · Previsão de Chuva |
